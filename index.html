@@ -1,0 +1,288 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+#wrap{background:#080d18;color:#e0eaf8;font-family:var(--font-mono,monospace);padding:1.5rem;border-radius:var(--border-radius-lg);min-height:500px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.brand{font-size:15px;font-weight:500;letter-spacing:3px;color:#4fa3e8}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;background:#0d2a4a;color:#4fa3e8;border:0.5px solid #1a4a7a;letter-spacing:1px}
+.meta-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:1.25rem}
+.meta-card{background:#0d1421;border:0.5px solid #1a2a3e;border-radius:var(--border-radius-md);padding:10px 12px}
+.meta-card .mlabel{font-size:10px;color:#3a5570;letter-spacing:1px;margin-bottom:3px}
+.meta-card .mval{font-size:13px;color:#a0c4e8;font-weight:500;word-break:break-all}
+.controls{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
+.btn{background:#0d2a4a;border:0.5px solid #1a4a7a;color:#4fa3e8;font-size:12px;padding:7px 16px;border-radius:var(--border-radius-md);cursor:pointer;letter-spacing:0.5px;font-family:var(--font-mono,monospace);transition:background 0.15s}
+.btn:hover{background:#1a3a5a}
+.btn:disabled{opacity:0.35;cursor:not-allowed}
+.btn.danger{background:#2a0d0d;border-color:#5a1a1a;color:#e87070}
+.btn.danger:hover{background:#3a1010}
+.filter-input{background:#0d1421;border:0.5px solid #1a2a3e;color:#a0c4e8;font-size:12px;padding:7px 12px;border-radius:var(--border-radius-md);font-family:var(--font-mono,monospace);width:140px}
+.filter-input::placeholder{color:#2a4060}
+.progress-wrap{height:3px;background:#0d1421;border-radius:3px;margin-bottom:1.25rem;overflow:hidden}
+.progress-bar{height:100%;background:#4fa3e8;width:0%;transition:width 0.2s;border-radius:3px}
+.status-line{font-size:11px;color:#3a6090;margin-bottom:1rem;min-height:16px;letter-spacing:0.5px}
+.status-line span{color:#4fa3e8}
+.results-header{display:grid;grid-template-columns:110px 90px 80px 1fr;gap:8px;font-size:10px;color:#2a4060;letter-spacing:1px;padding:0 4px 6px;border-bottom:0.5px solid #0d2030;margin-bottom:6px}
+.result-list{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto}
+.result-item{display:grid;grid-template-columns:110px 90px 80px 1fr;gap:8px;font-size:12px;padding:7px 4px;border-radius:var(--border-radius-md);background:#0a1220;border:0.5px solid #0d2030;align-items:center;animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.result-item:hover{background:#0d1830;border-color:#1a3050}
+.ip-col{color:#4fa3e8;font-weight:500}
+.latency-col{color:#4ade80}
+.latency-col.slow{color:#facc15}
+.latency-col.fail{color:#f87171}
+.type-col{color:#a0c4e8;font-size:11px}
+.info-col{color:#2a5070;font-size:11px;word-break:break-all}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot.up{background:#4ade80}
+.dot.down{background:#f87171}
+.dot.scanning{background:#facc15;animation:pulse 0.8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.summary{display:flex;gap:16px;margin-top:1rem;font-size:11px;color:#3a5570;flex-wrap:wrap}
+.summary b{color:#4fa3e8}
+.scan-ring{display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem}
+.ring-svg{animation:rotateSVG 2s linear infinite}
+@keyframes rotateSVG{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+#ringWrap{display:none;flex-direction:column;align-items:center;gap:8px}
+.ring-label{font-size:12px;color:#3a6090;letter-spacing:1px}
+</style>
+
+<div id="wrap">
+  <h2 class="sr-only">Real-time network scanner — scans your local network for active hosts and measures latency</h2>
+
+  <div class="topbar">
+    <div class="brand">NET SCAN</div>
+    <div class="badge" id="liveBadge">READY</div>
+  </div>
+
+  <div class="meta-row" id="metaRow">
+    <div class="meta-card"><div class="mlabel">YOUR IP</div><div class="mval" id="myIp">detecting...</div></div>
+    <div class="meta-card"><div class="mlabel">USER AGENT</div><div class="mval" id="uaShort">detecting...</div></div>
+    <div class="meta-card"><div class="mlabel">CONNECTION</div><div class="mval" id="connType">detecting...</div></div>
+    <div class="meta-card"><div class="mlabel">HOSTS FOUND</div><div class="mval" id="hostsFound">0</div></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="btnScan" onclick="startScan()">▶ Start scan</button>
+    <button class="btn danger" id="btnStop" onclick="stopScan()" disabled>■ Stop</button>
+    <input class="filter-input" id="filterInput" placeholder="filter by IP or type..." oninput="renderFiltered()">
+    <button class="btn" onclick="exportResults()">↓ Export</button>
+  </div>
+
+  <div class="progress-wrap"><div class="progress-bar" id="prog"></div></div>
+  <div class="status-line" id="statusLine">Ready — click Start scan to begin</div>
+
+  <div id="ringWrap">
+    <svg class="ring-svg" width="40" height="40" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="16" fill="none" stroke="#0d2a4a" stroke-width="3"/>
+      <circle cx="20" cy="20" r="16" fill="none" stroke="#4fa3e8" stroke-width="3" stroke-dasharray="30 70" stroke-linecap="round"/>
+    </svg>
+    <div class="ring-label" id="ringLabel">scanning...</div>
+  </div>
+
+  <div class="results-header">
+    <div>HOST / IP</div><div>LATENCY</div><div>STATUS</div><div>INFO</div>
+  </div>
+  <div class="result-list" id="resultList"></div>
+
+  <div class="summary">
+    <span>Up: <b id="sumUp">0</b></span>
+    <span>Unreachable: <b id="sumDown">0</b></span>
+    <span>Avg latency: <b id="sumAvg">–</b> ms</span>
+    <span>Scan time: <b id="sumTime">–</b> s</span>
+  </div>
+</div>
+
+<script>
+let scanning = false;
+let results = [];
+let scanStart = 0;
+let stopFlag = false;
+
+const TARGETS = [
+  {host:'1.1.1.1', label:'Cloudflare DNS'},
+  {host:'8.8.8.8', label:'Google DNS'},
+  {host:'8.8.4.4', label:'Google DNS 2'},
+  {host:'9.9.9.9', label:'Quad9 DNS'},
+  {host:'208.67.222.222', label:'OpenDNS'},
+  {host:'1.0.0.1', label:'Cloudflare Alt'},
+  {host:'94.140.14.14', label:'AdGuard DNS'},
+  {host:'77.88.8.8', label:'Yandex DNS'},
+  {host:'64.6.64.6', label:'Verisign DNS'},
+  {host:'185.228.168.9', label:'CleanBrowsing'},
+  {host:'76.76.19.19', label:'Alternate DNS'},
+  {host:'80.80.80.80', label:'Freenom DNS'},
+  {host:'google.com', label:'Google'},
+  {host:'facebook.com', label:'Facebook'},
+  {host:'amazon.com', label:'Amazon'},
+  {host:'cloudflare.com', label:'Cloudflare'},
+  {host:'github.com', label:'GitHub'},
+  {host:'netflix.com', label:'Netflix'},
+  {host:'twitter.com', label:'Twitter/X'},
+  {host:'youtube.com', label:'YouTube'},
+  {host:'reddit.com', label:'Reddit'},
+  {host:'wikipedia.org', label:'Wikipedia'},
+  {host:'apple.com', label:'Apple'},
+  {host:'microsoft.com', label:'Microsoft'},
+];
+
+async function getMyIp() {
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const d = await r.json();
+    document.getElementById('myIp').textContent = d.ip;
+  } catch {
+    try {
+      const r2 = await fetch('https://api64.ipify.org?format=json');
+      const d2 = await r2.json();
+      document.getElementById('myIp').textContent = d2.ip;
+    } catch {
+      document.getElementById('myIp').textContent = 'unavailable';
+    }
+  }
+}
+
+function getConnInfo() {
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    const parts = [];
+    if (conn.effectiveType) parts.push(conn.effectiveType.toUpperCase());
+    if (conn.downlink) parts.push(conn.downlink + ' Mbps');
+    if (conn.rtt) parts.push('RTT ' + conn.rtt + 'ms');
+    document.getElementById('connType').textContent = parts.join(' · ') || 'unknown';
+  } else {
+    document.getElementById('connType').textContent = 'API unavailable';
+  }
+  const ua = navigator.userAgent;
+  let uaShort = 'unknown';
+  if (/Chrome\/(\d+)/.test(ua)) uaShort = 'Chrome ' + ua.match(/Chrome\/(\d+)/)[1];
+  else if (/Firefox\/(\d+)/.test(ua)) uaShort = 'Firefox ' + ua.match(/Firefox\/(\d+)/)[1];
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) uaShort = 'Safari';
+  else if (/Edg\/(\d+)/.test(ua)) uaShort = 'Edge ' + ua.match(/Edg\/(\d+)/)[1];
+  document.getElementById('uaShort').textContent = uaShort;
+}
+
+async function pingHost(host, label) {
+  const url = 'https://' + host + '/favicon.ico?_=' + Date.now();
+  const t0 = performance.now();
+  try {
+    await fetch(url, {mode:'no-cors', cache:'no-store', signal: AbortSignal.timeout(4000)});
+    const latency = Math.round(performance.now() - t0);
+    return {host, label, latency, status:'up', type: isIp(host)?'DNS':'Web'};
+  } catch(e) {
+    const latency = Math.round(performance.now() - t0);
+    if (latency < 3900) {
+      return {host, label, latency, status:'up', type: isIp(host)?'DNS':'Web', note:'CORS block (reachable)'};
+    }
+    return {host, label, latency:null, status:'timeout', type: isIp(host)?'DNS':'Web'};
+  }
+}
+
+function isIp(h) { return /^\d+\.\d+\.\d+\.\d+$/.test(h); }
+
+function renderFiltered() {
+  const f = document.getElementById('filterInput').value.toLowerCase();
+  const filtered = f ? results.filter(r => r.host.toLowerCase().includes(f) || (r.type||'').toLowerCase().includes(f) || (r.label||'').toLowerCase().includes(f)) : results;
+  const list = document.getElementById('resultList');
+  list.innerHTML = filtered.map(r => {
+    const latTxt = r.latency !== null && r.latency !== undefined ? r.latency + ' ms' : '–';
+    const latClass = r.latency === null || r.latency === undefined ? 'fail' : r.latency > 300 ? 'slow' : '';
+    const dot = r.status === 'up' ? 'up' : r.status === 'scanning' ? 'scanning' : 'down';
+    const info = r.note || (r.status === 'timeout' ? 'no response / timed out' : r.label || '');
+    return `<div class="result-item">
+      <div class="ip-col"><span class="dot ${dot}"></span>${r.host}</div>
+      <div class="latency-col ${latClass}">${latTxt}</div>
+      <div class="type-col">${r.type||''}</div>
+      <div class="info-col">${info}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateSummary() {
+  const up = results.filter(r=>r.status==='up').length;
+  const down = results.filter(r=>r.status==='timeout').length;
+  const lats = results.filter(r=>r.latency).map(r=>r.latency);
+  const avg = lats.length ? Math.round(lats.reduce((a,b)=>a+b,0)/lats.length) : null;
+  document.getElementById('sumUp').textContent = up;
+  document.getElementById('sumDown').textContent = down;
+  document.getElementById('sumAvg').textContent = avg !== null ? avg : '–';
+  document.getElementById('hostsFound').textContent = up;
+  if (scanStart) {
+    document.getElementById('sumTime').textContent = ((performance.now()-scanStart)/1000).toFixed(1);
+  }
+}
+
+async function startScan() {
+  if (scanning) return;
+  scanning = true; stopFlag = false;
+  results = [];
+  document.getElementById('btnScan').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  document.getElementById('liveBadge').textContent = 'SCANNING';
+  document.getElementById('ringWrap').style.display = 'flex';
+  document.getElementById('prog').style.width = '0%';
+  document.getElementById('resultList').innerHTML = '';
+  scanStart = performance.now();
+
+  const total = TARGETS.length;
+  let done = 0;
+
+  results = TARGETS.map(t=>({...t, status:'scanning', type: isIp(t.host)?'DNS':'Web'}));
+  renderFiltered();
+
+  const CONCURRENCY = 6;
+  let idx = 0;
+
+  async function worker() {
+    while (idx < total && !stopFlag) {
+      const i = idx++;
+      const t = TARGETS[i];
+      document.getElementById('statusLine').innerHTML = `Scanning <span>${t.host}</span> (${i+1}/${total})`;
+      document.getElementById('ringLabel').textContent = t.host;
+      const res = await pingHost(t.host, t.label);
+      results[i] = res;
+      done++;
+      const pct = Math.round((done/total)*100);
+      document.getElementById('prog').style.width = pct + '%';
+      updateSummary();
+      renderFiltered();
+    }
+  }
+
+  const workers = Array(CONCURRENCY).fill(null).map(()=>worker());
+  await Promise.all(workers);
+
+  scanning = false;
+  stopFlag = false;
+  document.getElementById('btnScan').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('liveBadge').textContent = stopFlag ? 'STOPPED' : 'DONE';
+  document.getElementById('ringWrap').style.display = 'none';
+  document.getElementById('statusLine').innerHTML = `Scan complete — <span>${results.filter(r=>r.status==='up').length}</span> hosts reachable`;
+  updateSummary();
+}
+
+function stopScan() {
+  stopFlag = true;
+  scanning = false;
+  document.getElementById('liveBadge').textContent = 'STOPPED';
+  document.getElementById('ringWrap').style.display = 'none';
+  document.getElementById('btnScan').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('statusLine').textContent = 'Scan stopped by user';
+}
+
+function exportResults() {
+  const rows = ['Host,Label,Latency(ms),Status,Type,Note'];
+  results.forEach(r=>{
+    rows.push([r.host, r.label||'', r.latency||'', r.status, r.type||'', r.note||''].join(','));
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'netscan_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.csv';
+  a.click();
+}
+
+getMyIp();
+getConnInfo();
+</script>
